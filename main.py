@@ -97,13 +97,13 @@ train_prices = prices_scaled[:split_point]
 test_prices = prices_scaled[split_point:]
 
 # 定义超参数
-seq_lengths = [3, 6, 9,30,180]  # 使用前三天的价格预测后一天
+seq_lengths = [ 3, 6 ]  # 使用前三天的价格预测后一天
 input_size = 1
 hidden_size = 64
 num_layers = 2
 output_size = 1
 batch_size = 64
-num_epochs = 150
+num_epochs = 50
 learning_rate = 0.0001
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -133,8 +133,9 @@ for train_dataloader, test_dataloader in zip(train_dataloaders, test_dataloaders
     criterions.append(criterion)
     optimizers.append(optimizer)
 
+losses = [[] for _ in range(len(seq_lengths))]
 # 训练模型
-for model, criterion, optimizer, train_dataloader in zip(models, criterions, optimizers, train_dataloaders):
+for idx, (model, criterion, optimizer, train_dataloader) in enumerate(zip(models, criterions, optimizers, train_dataloaders)):
     model.train()
     for epoch in range(num_epochs):
         epoch_loss = 0  # 初始化当前 epoch 的总损失
@@ -147,8 +148,20 @@ for model, criterion, optimizer, train_dataloader in zip(models, criterions, opt
             optimizer.step()
             epoch_loss += loss.item()  # 累加当前批次的损失值
         epoch_loss /= len(train_dataloader)  # 计算当前 epoch 的平均损失
+        losses[idx].append(epoch_loss)  # 记录损失
         if (epoch + 1) % 10 == 0:
             print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}')
+        
+# 绘制训练损失曲线
+plt.figure(figsize=(10, 6))
+for seq_length, loss in zip(seq_lengths, losses):
+    plt.plot(range(1, num_epochs + 1), loss, marker='o', linestyle='-', label=f'Sequence Length: {seq_length}')
+plt.title('Training Loss Over Epochs for Different Sequence Lengths')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 # 评估模型并记录测试损失
 test_losses = []
